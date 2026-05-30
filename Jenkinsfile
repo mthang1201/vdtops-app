@@ -11,12 +11,12 @@ pipeline {
     environment {
         // Docker Hub Registry Configuration
         // Jenkins Credentials ID containing username/password for Docker Hub
-        DOCKERHUB_CREDS = credentials('docker-hub-credentials') 
+        DOCKERHUB_CREDS = credentials('dockerhub-credentials') 
         
         // GitOps Config Repository Configuration
         // Jenkins Credentials ID (Username/Password or Token) for GitHub config repo
-        GITHUB_CREDS = credentials('github-git-credentials')
-        CONFIG_REPO_URL = 'github.com/mthang1201/config-repo.git'
+        GITHUB_CREDS = credentials('github-token')
+        CONFIG_REPO_URL = 'github.com/mthang1201/vdtops-config.git'
         
         // Global variables initialized in stages
         GIT_TAG = ''

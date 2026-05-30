@@ -4,7 +4,7 @@ global:
 
 # Nginx Web Frontend Configuration
 web:
-  image: "docker.io/vdtops/web" # Default placeholder, user replaces with their dockerhub username
+  image: "docker.io/mthang1201/vdtops-web" # Default placeholder, user replaces with their dockerhub username
   tag: "v1.0.1"                 # Updated dynamically by Jenkins CI/CD pipeline
   replicas: 2
   containerPort: 8080
@@ -21,7 +21,7 @@ web:
 
 # Express API Backend Configuration
 api:
-  image: "docker.io/vdtops/api" # Default placeholder, user replaces with their dockerhub username
+  image: "docker.io/mthang1201/vdtops-api" # Default placeholder, user replaces with their dockerhub username
   tag: "v1.0.1"                 # Updated dynamically by Jenkins CI/CD pipeline
   replicas: 2
   containerPort: 5000
