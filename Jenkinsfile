@@ -6,19 +6,19 @@ pipeline {
     kind: Pod
     spec:
     containers:
-    - name: docker
+        - name: docker
         image: docker:27-cli
         command:
-        - cat
+            - cat
         tty: true
         volumeMounts:
-        - name: docker-sock
-        mountPath: /var/run/docker.sock
+            - name: docker-sock
+            mountPath: /var/run/docker.sock
 
     volumes:
-    - name: docker-sock
+        - name: docker-sock
         hostPath:
-        path: /var/run/docker.sock
+            path: /var/run/docker.sock
     '''
         }
     }
