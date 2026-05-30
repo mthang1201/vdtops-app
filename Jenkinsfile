@@ -20,7 +20,7 @@ pipeline {
         
         // Global variables initialized in stages
         GIT_TAG = ''
-        DOCKER_USER = "${${DOCKERHUB_CREDS_USR}}"
+        DOCKER_USER = "${DOCKERHUB_CREDS_USR}"
     }
 
     stages {
