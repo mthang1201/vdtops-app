@@ -11,7 +11,7 @@ pipeline {
     environment {
         // Docker Hub Registry Configuration
         // Jenkins Credentials ID containing username/password for Docker Hub
-        DOCKERHUB_CREDS = credentials('dockerhub-credentials') 
+        DOCKERHUB_CREDS = credentials('dockerhub-creds') 
         
         // GitOps Config Repository Configuration
         // Jenkins Credentials ID (Username/Password or Token) for GitHub config repo
@@ -20,7 +20,7 @@ pipeline {
         
         // Global variables initialized in stages
         GIT_TAG = ''
-        DOCKER_USER = "${env.DOCKERHUB_CREDS_USR}"
+        DOCKER_USER = "${${DOCKERHUB_CREDS_USR}}"
     }
 
     stages {
