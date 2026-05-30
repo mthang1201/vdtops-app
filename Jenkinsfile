@@ -131,43 +131,13 @@ pipeline {
         stage('Stage 8: Update Image Tags inside values.yaml') {
             steps {
                 echo "=== [Stage 8] Updating Helm values.yaml tags with: ${GIT_TAG} ==="
-                // Safe standard Python file parser to update image tags in values.yaml without dependency failures
+
                 sh """
-                python3 -c "
-with open('config-repo/dev/values.yaml', 'r') as f:
-    lines = f.readlines()
+                sed -i '/^web:/,/^api:/ s/^  tag:.*/  tag: "${GIT_TAG}"/' config-repo/dev/values.yaml
+                sed -i '/^api:/,/^ingress:/ s/^  tag:.*/  tag: "${GIT_TAG}"/' config-repo/dev/values.yaml
 
-in_web = False
-in_api = False
-new_lines = []
-
-for line in lines:
-    stripped = line.strip()
-    if stripped.startswith('web:'):
-        in_web = True
-        in_api = False
-    elif stripped.startswith('api:'):
-        in_api = True
-        in_web = False
-    elif stripped.startswith('ingress:'):
-        in_web = False
-        in_api = False
-    
-    if in_web and stripped.startswith('tag:'):
-        indent = line.split('tag:')[0]
-        line = f'{indent}tag: \"${GIT_TAG}\"\n'
-    elif in_api and stripped.startswith('tag:'):
-        indent = line.split('tag:')[0]
-        line = f'{indent}tag: \"${GIT_TAG}\"\n'
-        
-    new_lines.append(line)
-
-with open('config-repo/dev/values.yaml', 'w') as f:
-    f.writelines(new_lines)
-"
+                git -C config-repo diff dev/values.yaml
                 """
-                // Show output diff to verify change correctness in the log
-                sh "git diff config-repo/dev/values.yaml"
             }
         }
 
