@@ -1,5 +1,27 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+    apiVersion: v1
+    kind: Pod
+    spec:
+    containers:
+    - name: docker
+        image: docker:27-cli
+        command:
+        - cat
+        tty: true
+        volumeMounts:
+        - name: docker-sock
+        mountPath: /var/run/docker.sock
+
+    volumes:
+    - name: docker-sock
+        hostPath:
+        path: /var/run/docker.sock
+    '''
+        }
+    }
 
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -61,29 +83,37 @@ pipeline {
         stage('Stage 3: Build Web Image') {
             steps {
                 echo '=== [Stage 3] Building Web Nginx Image ==='
-                sh "docker build -t ${DOCKER_USER}/vdtops-web:${GIT_TAG} ./vdtops-app/web"
+                container('docker') {
+                    sh "docker build -t ${DOCKER_USER}/vdtops-web:${GIT_TAG} ./vdtops-app/web"
+                }
             }
         }
 
         stage('Stage 4: Build API Image') {
             steps {
                 echo '=== [Stage 4] Building API Express Image ==='
-                sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${GIT_TAG} ./vdtops-app/api"
+                container('docker') {
+                    sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${GIT_TAG} ./vdtops-app/api"
+                }
             }
         }
 
         stage('Stage 5: Push Web Image') {
             steps {
                 echo '=== [Stage 5] Pushing Web Image to Docker Hub ==='
-                sh "echo '${DOCKERHUB_CREDS_PSW}' | docker login -u '${DOCKER_USER}' --password-stdin"
-                sh "docker push ${DOCKER_USER}/vdtops-web:${GIT_TAG}"
+                container('docker') {
+                    sh "echo '${DOCKERHUB_CREDS_PSW}' | docker login -u '${DOCKER_USER}' --password-stdin"
+                    sh "docker push ${DOCKER_USER}/vdtops-web:${GIT_TAG}"
+                }
             }
         }
 
         stage('Stage 6: Push API Image') {
             steps {
                 echo '=== [Stage 6] Pushing API Image to Docker Hub ==='
-                sh "docker push ${DOCKER_USER}/vdtops-api:${GIT_TAG}"
+                container('docker') {
+                    sh "docker push ${DOCKER_USER}/vdtops-api:${GIT_TAG}"
+                }
             }
         }
 
@@ -184,7 +214,9 @@ with open('config-repo/dev/values.yaml', 'w') as f:
         always {
             echo 'Pipeline execution cleanup.'
             // Clean local workspace images to avoid disk saturation in Jenkins node
-            sh "docker rmi ${DOCKER_USER}/web:${GIT_TAG} ${DOCKER_USER}/api:${GIT_TAG} || true"
+            container('docker') {
+                sh "docker rmi ${DOCKER_USER}/web:${GIT_TAG} ${DOCKER_USER}/api:${GIT_TAG} || true"
+            }
         }
         failure {
             echo '❌ PIPELINE FAILED! Please inspect stages above for detail logs.'
