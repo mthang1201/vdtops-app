@@ -31,6 +31,16 @@ pipeline {
             }
         }
 
+        stage('Debug') {
+            steps {
+                sh '''
+                    whoami
+                    which docker || true
+                    docker version || true
+                '''
+            }
+        }
+
         stage('Stage 2: Read Git Tag') {
             steps {
                 echo '=== [Stage 2] Resolving active Git Tag or Commit ==='
@@ -51,14 +61,14 @@ pipeline {
         stage('Stage 3: Build Web Image') {
             steps {
                 echo '=== [Stage 3] Building Web Nginx Image ==='
-                sh "docker build -t ${DOCKER_USER}/web:${GIT_TAG} ./app-repo/web"
+                sh "docker build -t ${DOCKER_USER}/vdtops-web:${GIT_TAG} ./vdtops-app/web"
             }
         }
 
         stage('Stage 4: Build API Image') {
             steps {
                 echo '=== [Stage 4] Building API Express Image ==='
-                sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/api:${GIT_TAG} ./app-repo/api"
+                sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${GIT_TAG} ./vdtops-app/api"
             }
         }
 
@@ -66,14 +76,14 @@ pipeline {
             steps {
                 echo '=== [Stage 5] Pushing Web Image to Docker Hub ==='
                 sh "echo '${DOCKERHUB_CREDS_PSW}' | docker login -u '${DOCKER_USER}' --password-stdin"
-                sh "docker push ${DOCKER_USER}/web:${GIT_TAG}"
+                sh "docker push ${DOCKER_USER}/vdtops-web:${GIT_TAG}"
             }
         }
 
         stage('Stage 6: Push API Image') {
             steps {
                 echo '=== [Stage 6] Pushing API Image to Docker Hub ==='
-                sh "docker push ${DOCKER_USER}/api:${GIT_TAG}"
+                sh "docker push ${DOCKER_USER}/vdtops-api:${GIT_TAG}"
             }
         }
 
