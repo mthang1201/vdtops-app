@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "my-app.fullname" . | default .Chart.Name }}
+  labels:
+    app: {{ include "my-app.name" . | default .Chart.Name }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # Match API paths first
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "my-app.fullname" . | default .Chart.Name }}-api
+                port:
+                  number: {{ .Values.api.service.port }}
+          # Fallback to frontend Web assets
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "my-app.fullname" . | default .Chart.Name }}-web
+                port:
+                  number: {{ .Values.web.service.port }}
+{{- end }}

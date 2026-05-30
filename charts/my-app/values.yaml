@@ -1,0 +1,47 @@
+# Global configurations
+global:
+  environment: dev
+
+# Nginx Web Frontend Configuration
+web:
+  image: "docker.io/vdtops/web" # Default placeholder, user replaces with their dockerhub username
+  tag: "v1.0.1"                 # Updated dynamically by Jenkins CI/CD pipeline
+  replicas: 2
+  containerPort: 8080
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Express API Backend Configuration
+api:
+  image: "docker.io/vdtops/api" # Default placeholder, user replaces with their dockerhub username
+  tag: "v1.0.1"                 # Updated dynamically by Jenkins CI/CD pipeline
+  replicas: 2
+  containerPort: 5000
+  service:
+    type: ClusterIP
+    port: 5000
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Ingress Controller Configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "vdt-app.local"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
