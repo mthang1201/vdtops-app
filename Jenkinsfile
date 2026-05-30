@@ -5,20 +5,20 @@ pipeline {
     apiVersion: v1
     kind: Pod
     spec:
-    containers:
-        - name: docker
-        image: docker:27-cli
-        command:
-            - cat
-        tty: true
-        volumeMounts:
-            - name: docker-sock
-            mountPath: /var/run/docker.sock
+        containers:
+            - name: docker
+              image: docker:27-cli
+              command:
+                - cat
+              tty: true
+              volumeMounts:
+                - name: docker-sock
+                  mountPath: /var/run/docker.sock
 
-    volumes:
-        - name: docker-sock
-        hostPath:
-            path: /var/run/docker.sock
+        volumes:
+            - name: docker-sock
+              hostPath:
+                path: /var/run/docker.sock
     '''
         }
     }
