@@ -84,7 +84,7 @@ pipeline {
             steps {
                 echo '=== [Stage 3] Building Web Nginx Image ==='
                 container('docker') {
-                    sh "docker build -t ${DOCKER_USER}/vdtops-web:${GIT_TAG} ./vdtops-app/web"
+                    sh "docker build -t ${DOCKER_USER}/vdtops-web:${GIT_TAG} ./web"
                 }
             }
         }
@@ -93,7 +93,7 @@ pipeline {
             steps {
                 echo '=== [Stage 4] Building API Express Image ==='
                 container('docker') {
-                    sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${GIT_TAG} ./vdtops-app/api"
+                    sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${GIT_TAG} ./api"
                 }
             }
         }
