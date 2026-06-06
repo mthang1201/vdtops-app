@@ -124,7 +124,11 @@ pipeline {
                 sh "rm -rf config-repo"
                 
                 // Clone using authenticated HTTPS URL
-                sh "git clone https://${GITHUB_CREDS_USR}:${GITHUB_CREDS_PSW}@${CONFIG_REPO_URL} config-repo"
+                sshagent(credentials: ['github-token']) {
+                    sh '''
+                        git clone git@github.com:mthang1201/vdtops-config.git config-repo
+                    '''
+                }
             }
         }
 
@@ -145,19 +149,18 @@ pipeline {
             steps {
                 echo '=== [Stage 9] Committing and Pushing config changes back to GitOps ==='
                 dir('config-repo') {
-                    sh """
-                    git config user.name 'Jenkins CI/CD'
-                    git config user.email 'jenkins-cicd@viettel.com.vn'
-                    git add dev/values.yaml
-                    
-                    # Check if there are differences before committing to prevent empty commit build failures
-                    if ! git diff-index --quiet HEAD --; then
-                        git commit -m 'chore(gitops): release version ${GIT_TAG} [skip ci]'
-                        git push origin HEAD:main
-                    else
-                        echo 'No changes in values.yaml to commit.'
-                    fi
-                    """
+                    sshagent(credentials: ['github-token']) {
+                        sh '''
+                            git config user.email "jenkins@example.com"
+                            git config user.name "jenkins"
+
+                            git add .
+                            git commit -m "Update image tag to ${GIT_TAG}" || echo "No changes to commit"
+
+                            git remote set-url origin git@github.com:mthang1201/vdtops-config.git
+                            git push origin main
+                        '''
+                    }
                 }
             }
         }
