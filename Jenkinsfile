@@ -173,8 +173,8 @@ pipeline {
                 🎉 DEPLOYMENT DELIVERY PIPELINE COMPLETED SUCCESSFULLY! 🎉
                 ==============================================================
                 - Build Version/Tag : ${GIT_TAG}
-                - Web Image Pushed  : ${DOCKER_USER}/web:${GIT_TAG}
-                - API Image Pushed  : ${DOCKER_USER}/api:${GIT_TAG}
+                - Web Image Pushed  : ${DOCKER_USER}/vdtops-web:${GIT_TAG}
+                - API Image Pushed  : ${DOCKER_USER}/vdtops-api:${GIT_TAG}
                 - Config Status     : Updated values.yaml & pushed to config-repo
                 - GitOps Auto-Sync  : ArgoCD is reconciling state...
                 ==============================================================
@@ -188,7 +188,7 @@ pipeline {
             echo 'Pipeline execution cleanup.'
             // Clean local workspace images to avoid disk saturation in Jenkins node
             container('docker') {
-                sh "docker rmi ${DOCKER_USER}/web:${GIT_TAG} ${DOCKER_USER}/api:${GIT_TAG} || true"
+                sh "docker rmi ${DOCKER_USER}/vdtops-web:${GIT_TAG} ${DOCKER_USER}/vdtops-api:${GIT_TAG} || true"
             }
         }
         failure {
