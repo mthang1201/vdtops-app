@@ -124,9 +124,13 @@ pipeline {
                 sh "rm -rf config-repo"
                 
                 // Clone using authenticated HTTPS URL
-                sshagent(credentials: ['github-token']) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-token',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
                     sh '''
-                        git clone git@github.com:mthang1201/vdtops-config.git config-repo
+                        git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/mthang1201/vdtops-config.git config-repo
                     '''
                 }
             }
@@ -149,7 +153,11 @@ pipeline {
             steps {
                 echo '=== [Stage 9] Committing and Pushing config changes back to GitOps ==='
                 dir('config-repo') {
-                    sshagent(credentials: ['github-token']) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-token',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
                         sh '''
                             git config user.email "jenkins@example.com"
                             git config user.name "jenkins"
@@ -157,7 +165,7 @@ pipeline {
                             git add .
                             git commit -m "Update image tag to ${GIT_TAG}" || echo "No changes to commit"
 
-                            git remote set-url origin git@github.com:mthang1201/vdtops-config.git
+                            git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/mthang1201/vdtops-config.git
                             git push origin main
                         '''
                     }
