@@ -25,6 +25,14 @@ spec:
                 name: {{ include "my-app.fullname" . | default .Chart.Name }}-api
                 port:
                   number: {{ .Values.api.service.port }}
+          # Expose API Prometheus metrics for browser/curl verification
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "my-app.fullname" . | default .Chart.Name }}-api
+                port:
+                  number: {{ .Values.api.service.port }}
           # Fallback to frontend Web assets
           - path: /
             pathType: Prefix

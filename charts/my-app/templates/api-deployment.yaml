@@ -13,6 +13,10 @@ spec:
       component: api
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "{{ .Values.api.containerPort }}"
       labels:
         app: {{ include "my-app.name" . | default .Chart.Name }}
         component: api
