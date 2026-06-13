@@ -49,10 +49,26 @@ const getRouteLabel = (req) => {
 app.use(cors());
 app.use(express.json());
 
-// Request logger middleware
+// Structured access logs for EFK/Kibana queries.
 app.use((req, res, next) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.url} - UA: ${req.headers['user-agent']}`);
+    const startedAt = process.hrtime.bigint();
+
+    res.on('finish', () => {
+        const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+
+        console.log(JSON.stringify({
+            service: 'api',
+            event: 'http_request',
+            method: req.method,
+            path: req.originalUrl || req.url,
+            status: res.statusCode,
+            response_code: res.statusCode,
+            duration_ms: Number(durationMs.toFixed(3)),
+            time: new Date().toISOString(),
+            user_agent: req.headers['user-agent'] || null
+        }));
+    });
+
     next();
 });
 
@@ -129,7 +145,17 @@ app.get('/metrics', async (req, res, next) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error(`[ERROR] Unhandled Exception: ${err.message}`);
+    console.error(JSON.stringify({
+        service: 'api',
+        event: 'unhandled_exception',
+        method: req.method,
+        path: req.originalUrl || req.url,
+        status: 500,
+        response_code: 500,
+        time: new Date().toISOString(),
+        error: err.message
+    }));
+
     res.status(500).json({
         error: 'Internal Server Error',
         message: err.message

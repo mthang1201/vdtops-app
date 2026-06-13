@@ -1,0 +1,66 @@
+---
+- name: Deploy EFK logging stack to Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    logging_namespace: logging
+    manifest_dir: "{{ playbook_dir }}"
+
+  tasks:
+    - name: Ensure logging namespace exists
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ logging_namespace }}"
+
+    - name: Apply Elasticsearch
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_dir }}/elasticsearch.yaml"
+
+    - name: Wait for Elasticsearch deployment
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: "{{ logging_namespace }}"
+        name: elasticsearch
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+
+    - name: Apply Kibana
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_dir }}/kibana.yaml"
+
+    - name: Apply Fluentd RBAC
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_dir }}/fluentd-rbac.yaml"
+
+    - name: Apply Fluentd config
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_dir }}/fluentd-configmap.yaml"
+
+    - name: Apply Fluentd daemonset
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_dir }}/fluentd-daemonset.yaml"
+
+    - name: Wait for Kibana deployment
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: "{{ logging_namespace }}"
+        name: kibana
+        wait: true
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
