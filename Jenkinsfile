@@ -53,13 +53,16 @@ pipeline {
             }
         }
 
-        stage('Debug') {
+        stage('Preflight') {
             steps {
-                sh '''
-                    whoami
-                    which docker || true
-                    docker version || true
-                '''
+                echo '=== [Preflight] Verifying required build tools ==='
+                sh 'git --version'
+                container('docker') {
+                    sh '''
+                        test -S /var/run/docker.sock
+                        docker version
+                    '''
+                }
             }
         }
 
@@ -69,12 +72,12 @@ pipeline {
                 script {
                     // Capture tag if it exists; fallback to short commit hash for testing branches
                     try {
-                        GIT_TAG = sh(script: 'git describe --tags --exact-match 2>/dev/null', returnStdout: true).trim()
-                        echo "Target Tag detected: ${GIT_TAG}"
+                        env.GIT_TAG = sh(script: 'git describe --tags --exact-match 2>/dev/null', returnStdout: true).trim()
+                        echo "Target Tag detected: ${env.GIT_TAG}"
                     } catch (Exception e) {
                         def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                        GIT_TAG = "v1.0.1-${commitHash}"
-                        echo "Warning: No exact Git tag found. Falling back to build tag format: ${GIT_TAG}"
+                        env.GIT_TAG = "v1.0.1-${commitHash}"
+                        echo "Warning: No exact Git tag found. Falling back to build tag format: ${env.GIT_TAG}"
                     }
                 }
             }
@@ -84,7 +87,7 @@ pipeline {
             steps {
                 echo '=== [Stage 3] Building Web Nginx Image ==='
                 container('docker') {
-                    sh "docker build -t ${DOCKER_USER}/vdtops-web:${GIT_TAG} ./web"
+                    sh "docker build -t ${DOCKER_USER}/vdtops-web:${env.GIT_TAG} ./web"
                 }
             }
         }
@@ -93,7 +96,7 @@ pipeline {
             steps {
                 echo '=== [Stage 4] Building API Express Image ==='
                 container('docker') {
-                    sh "docker build --build-arg APP_VERSION=${GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${GIT_TAG} ./api"
+                    sh "docker build --build-arg APP_VERSION=${env.GIT_TAG} -t ${DOCKER_USER}/vdtops-api:${env.GIT_TAG} ./api"
                 }
             }
         }
@@ -102,8 +105,8 @@ pipeline {
             steps {
                 echo '=== [Stage 5] Pushing Web Image to Docker Hub ==='
                 container('docker') {
-                    sh "echo '${DOCKERHUB_CREDS_PSW}' | docker login -u '${DOCKER_USER}' --password-stdin"
-                    sh "docker push ${DOCKER_USER}/vdtops-web:${GIT_TAG}"
+                    sh 'echo "${DOCKERHUB_CREDS_PSW}" | docker login -u "${DOCKER_USER}" --password-stdin'
+                    sh "docker push ${DOCKER_USER}/vdtops-web:${env.GIT_TAG}"
                 }
             }
         }
@@ -112,7 +115,7 @@ pipeline {
             steps {
                 echo '=== [Stage 6] Pushing API Image to Docker Hub ==='
                 container('docker') {
-                    sh "docker push ${DOCKER_USER}/vdtops-api:${GIT_TAG}"
+                    sh "docker push ${DOCKER_USER}/vdtops-api:${env.GIT_TAG}"
                 }
             }
         }
@@ -138,11 +141,11 @@ pipeline {
 
         stage('Stage 8: Update Image Tags inside values.yaml') {
             steps {
-                echo "=== [Stage 8] Updating Helm values.yaml tags with: ${GIT_TAG} ==="
+                echo "=== [Stage 8] Updating Helm values.yaml tags with: ${env.GIT_TAG} ==="
 
                 sh """
-                sed -i '/^web:/,/^api:/ s/^  tag:.*/  tag: "${GIT_TAG}"/' config-repo/dev/values.yaml
-                sed -i '/^api:/,/^ingress:/ s/^  tag:.*/  tag: "${GIT_TAG}"/' config-repo/dev/values.yaml
+                sed -i '/^web:/,/^api:/ s/^  tag:.*/  tag: "${env.GIT_TAG}"/' config-repo/dev/values.yaml
+                sed -i '/^api:/,/^ingress:/ s/^  tag:.*/  tag: "${env.GIT_TAG}"/' config-repo/dev/values.yaml
 
                 git -C config-repo diff dev/values.yaml
                 """
@@ -159,14 +162,18 @@ pipeline {
                         passwordVariable: 'GIT_TOKEN'
                     )]) {
                         sh '''
+                            set -eu
                             git config user.email "jenkins@example.com"
                             git config user.name "jenkins"
 
-                            git add .
-                            git commit -m "Update image tag to ${GIT_TAG}" || echo "No changes to commit"
-
-                            git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/mthang1201/vdtops-config.git
-                            git push origin main
+                            if git diff --quiet -- dev/values.yaml; then
+                                echo "No config changes to commit; dev/values.yaml already uses ${GIT_TAG}."
+                            else
+                                git add dev/values.yaml
+                                git commit -m "Update image tag to ${GIT_TAG}"
+                                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/mthang1201/vdtops-config.git
+                                git push origin main
+                            fi
                         '''
                     }
                 }
@@ -180,10 +187,10 @@ pipeline {
                 ==============================================================
                 🎉 DEPLOYMENT DELIVERY PIPELINE COMPLETED SUCCESSFULLY! 🎉
                 ==============================================================
-                - Build Version/Tag : ${GIT_TAG}
-                - Web Image Pushed  : ${DOCKER_USER}/vdtops-web:${GIT_TAG}
-                - API Image Pushed  : ${DOCKER_USER}/vdtops-api:${GIT_TAG}
-                - Config Status     : Updated values.yaml & pushed to config-repo
+                - Build Version/Tag : ${env.GIT_TAG}
+                - Web Image Pushed  : ${DOCKER_USER}/vdtops-web:${env.GIT_TAG}
+                - API Image Pushed  : ${DOCKER_USER}/vdtops-api:${env.GIT_TAG}
+                - Config Status     : dev/values.yaml checked and pushed when changed
                 - GitOps Auto-Sync  : ArgoCD is reconciling state...
                 ==============================================================
                 """
@@ -196,7 +203,11 @@ pipeline {
             echo 'Pipeline execution cleanup.'
             // Clean local workspace images to avoid disk saturation in Jenkins node
             container('docker') {
-                sh "docker rmi ${DOCKER_USER}/vdtops-web:${GIT_TAG} ${DOCKER_USER}/vdtops-api:${GIT_TAG} || true"
+                sh '''
+                    if [ -n "${GIT_TAG:-}" ]; then
+                        docker rmi "${DOCKER_USER}/vdtops-web:${GIT_TAG}" "${DOCKER_USER}/vdtops-api:${GIT_TAG}" || true
+                    fi
+                '''
             }
         }
         failure {
