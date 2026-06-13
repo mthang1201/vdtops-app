@@ -14,10 +14,15 @@ data:
       refresh_interval 5
 
       <parse>
-        @type regexp
-        expression /^(?<cri_time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[FP]) (?<log>.*)$/
+        @type json
+        time_key time
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
       </parse>
     </source>
+
+    <match kubernetes.var.log.containers.fluentd**>
+      @type null
+    </match>
 
     <filter kubernetes.**>
       @type kubernetes_metadata
@@ -29,21 +34,18 @@ data:
         key $.kubernetes.namespace_name
         pattern /^dev$/
       </regexp>
-      <regexp>
-        key $.kubernetes.labels.component
-        pattern /^(api|web)$/
-      </regexp>
-      <regexp>
-        key log
-        pattern /^\{/
-      </regexp>
+      # <regexp>
+      #   key $.kubernetes.labels.component
+      #   pattern /^(api|web)$/
+      # </regexp>
     </filter>
 
     <filter kubernetes.**>
       @type parser
       key_name log
       reserve_data true
-      remove_key_name_field true
+      # remove_key_name_field true
+      remove_key_name_field false
       emit_invalid_record_to_error false
 
       <parse>
