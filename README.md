@@ -103,6 +103,171 @@ Our CI/CD & GitOps delivery flow is divided into 10 explicit pipeline stages aut
 4. **GitOps Trigger (Stages 7-9)**: Jenkins pulls the separate `config-repo`, runs a secure Python-based inline editor to update only the specific `web.tag` and `api.tag` fields inside `dev/values.yaml` (fully preserving structure and comments), commits the changes (`chore(gitops): release version v1.0.1 [skip ci]`), and pushes them back.
 5. **Reconciliation & Deployment (ArgoCD)**: ArgoCD detects the change in the config repository. Since the Application uses the **Multi-Source** framework, ArgoCD dynamically fetches the Helm chart templates from `app-repo` and merges them with the updated environment overrides in `config-repo`. It initiates an automated sync, self-heals any configuration drifts, and deploys the new containers with zero downtime.
 
+
+## 🧩 Platform Tooling Setup Guide
+
+This section provides the commands to install and access the supporting DevOps tools used in the local Kubernetes/Minikube environment: **ArgoCD**, **Jenkins**, **Prometheus**, and the **Logging** stack.
+
+### 1. ArgoCD
+
+#### Initialize ArgoCD
+
+Create the ArgoCD namespace if it does not already exist:
+
+```bash
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Install ArgoCD using the official stable manifest:
+
+```bash
+kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```
+
+#### Change ArgoCD Server Service to NodePort
+
+```bash
+kubectl patch svc argocd-server -n argocd \
+  -p '{"spec": {"type": "NodePort"}}'
+```
+
+Check the exposed service and NodePort:
+
+```bash
+kubectl get svc -n argocd
+```
+
+#### Get the Initial Admin Password
+
+```bash
+kubectl get secret argocd-initial-admin-secret -n argocd \
+  -o jsonpath="{.data.password}" | base64 -d
+```
+
+Default username:
+
+```text
+admin
+```
+
+---
+
+### 2. Jenkins
+
+#### Initialize Jenkins
+
+Add the Jenkins Helm repository and update local chart metadata:
+
+```bash
+helm repo add jenkins https://charts.jenkins.io
+helm repo update
+```
+
+Create the Jenkins namespace if it does not already exist:
+
+```bash
+kubectl create namespace jenkins --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Install Jenkins with a NodePort service on port `32000`:
+
+```bash
+helm install jenkins jenkins/jenkins \
+  -n jenkins \
+  --set controller.serviceType=NodePort \
+  --set controller.servicePort=8080 \
+  --set controller.nodePort=32000
+```
+
+Access Jenkins in the browser:
+
+```text
+http://localhost:32000
+```
+
+#### Get the Jenkins Admin Password
+
+```bash
+kubectl exec -n jenkins svc/jenkins -c jenkins \
+  -- cat /run/secrets/additional/chart-admin-password
+```
+
+#### Delete Jenkins
+
+```bash
+helm uninstall jenkins -n jenkins
+```
+
+---
+
+### 3. Prometheus Monitoring
+
+Go to the monitoring Ansible directory:
+
+```bash
+cd /Users/mthang1201/source/repos/helmops-delivery-system/vdtops-app/monitoring
+```
+
+Install the required Ansible collections and Python packages:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+python3 -m pip install kubernetes openshift
+```
+
+Run the Prometheus Kubernetes playbook:
+
+```bash
+ansible-playbook prometheus-k8s-playbook.yaml
+```
+
+Check the monitoring services:
+
+```bash
+kubectl get svc -n monitoring
+```
+
+Access Prometheus/Grafana monitoring UI:
+
+```text
+http://localhost:30900
+```
+
+---
+
+### 4. Logging Stack
+
+Go to the logging Ansible directory:
+
+```bash
+cd /Users/mthang1201/source/repos/helmops-delivery-system/vdtops-app/logging
+```
+
+Install the required Ansible collections:
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+Run the logging Kubernetes playbook:
+
+```bash
+ansible-playbook logging-k8s-playbook.yaml
+```
+
+Check the logging services:
+
+```bash
+kubectl get svc -n logging
+```
+
+Access the logging UI:
+
+```text
+http://localhost:30020
+```
+
 ---
 
 ## 💻 Validation & Testing Shell Commands
